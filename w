@@ -94,8 +94,8 @@ local function LayUnderTarget(Target)
     local TargetRoot = Target.Character.HumanoidRootPart
     local Position = TargetRoot.Position - Vector3.new(0,3,0)
     if RootPart then
-        local Spin = tick() * 5
         local LookAt = CFrame.new(Position, TargetRoot.Position)
+        local Spin = tick() * 30
         RootPart.CFrame = LookAt * CFrame.Angles(0, Spin, 0)
     end
 end
@@ -150,18 +150,43 @@ Humanoid.Died:Connect(function()
     IsRunning = false
 end)
 
+local function MonitorLobbyState(Char)
+    if not Char then return end
+    local function Check()
+        local HasLobby = Char:FindFirstChild("HasSpawnedLobby")
+        if HasLobby then
+            IsRunning = false
+        else
+            IsRunning = true
+        end
+    end
+    Check()
+    Char.ChildAdded:Connect(function(Child)
+        if Child.Name == "HasSpawnedLobby" then
+            IsRunning = false
+        end
+    end)
+    Char.ChildRemoved:Connect(function(Child)
+        if Child.Name == "HasSpawnedLobby" then
+            IsRunning = true
+        end
+    end)
+end
+
+MonitorLobbyState(Character)
 Player.CharacterAdded:Connect(function(NewCharacter)
     Character = NewCharacter
     Humanoid = Character:WaitForChild("Humanoid")
     RootPart = Character:WaitForChild("HumanoidRootPart")
     IsRunning = true
+    MonitorLobbyState(Character)
 end)
 
 local PlaceId, JobId = game.PlaceId, game.JobId
 local ServersUrl = "https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Desc&limit=100"
 
-local function ListServers(cursor)
-    local Raw = game:HttpGet(ServersUrl .. ((cursor and "&cursor="..cursor) or ""))
+local function ListServers(Cursor)
+    local Raw = game:HttpGet(ServersUrl .. ((Cursor and "&cursor="..Cursor) or ""))
     return HttpService:JSONDecode(Raw)
 end
 
