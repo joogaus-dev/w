@@ -151,44 +151,33 @@ Player.CharacterAdded:Connect(function(NewCharacter)
     IsRunning = true
 end)
 
+-- New biggest-server hop method
+local PlaceId, JobId = game.PlaceId, game.JobId
+local ServersUrl = "https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Desc&limit=100"
+
+local function ListServers(cursor)
+    local Raw = game:HttpGet(ServersUrl .. ((cursor and "&cursor="..cursor) or ""))
+    return HttpService:JSONDecode(Raw)
+end
+
 local function ServerHop()
-    local ServersUrl = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-
-    local function ListServers(Cursor)
-        local Raw = game:HttpGet(ServersUrl .. (Cursor and "&cursor=" .. Cursor or ""))
-        return HttpService:JSONDecode(Raw)
-    end
-
-    while true do
-        local Server, NextCursor = nil, nil
-        repeat
-            local ServersList = ListServers(NextCursor)
-            if #ServersList.data > 0 then
-                local BiggestServer = nil
-                for _, S in ipairs(ServersList.data) do
-                    if S.playing < S.maxPlayers and S.id ~= game.JobId then
-                        if not BiggestServer or S.playing > BiggestServer.playing then
-                            BiggestServer = S
-                        end
-                    end
+    local BestServer, BestPlayers = nil, -1
+    local Servers = ListServers()
+    if Servers and Servers.data then
+        for _, s in ipairs(Servers.data) do
+            if s.id ~= JobId and s.playing < s.maxPlayers then
+                if s.playing > BestPlayers then
+                    BestPlayers = s.playing
+                    BestServer = s
                 end
-                Server = BiggestServer
             end
-            NextCursor = ServersList.nextPageCursor
-        until Server or not NextCursor
-
-        if Server then
-            local Success, ErrorMsg = pcall(function()
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, Server.id, Player)
-            end)
-            if Success then
-                break
-            else
-                task.wait(1)
-            end
-        else
-            task.wait(1)
         end
+    end
+    if BestServer then
+        if Character and Character:FindFirstChild("HumanoidRootPart") then
+            Character.HumanoidRootPart.Anchored = true
+        end
+        TeleportService:TeleportToPlaceInstance(PlaceId, BestServer.id, Player)
     end
 end
 
