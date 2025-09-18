@@ -15,12 +15,18 @@ local CurrentTargetIndex = 1
 local TargetPlayers = {}
 local LastTargetSwitch = 0
 local LastClickTime = 0
+local HeartbeatConnection
 
 local VotePanel = Player.PlayerGui:WaitForChild("GameUI"):WaitForChild("Interface"):WaitForChild("VotePanel")
 
 local function HasForceField(TargetPlayer)
     if not TargetPlayer or not TargetPlayer.Character then return true end
     return TargetPlayer.Character:FindFirstChildOfClass("ForceField") ~= nil
+end
+
+local function HasSpawnedLobby(TargetPlayer)
+    if not TargetPlayer or not TargetPlayer.Character then return true end
+    return TargetPlayer.Character:FindFirstChild("HasSpawnedLobby") ~= nil
 end
 
 local function EquipKnife()
@@ -61,7 +67,7 @@ end
 local function UpdateTargetPlayers()
     TargetPlayers = {}
     for _, TargetPlayer in pairs(Players:GetPlayers()) do
-        if TargetPlayer ~= Player and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") and not HasForceField(TargetPlayer) then
+        if TargetPlayer ~= Player and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") and not HasForceField(TargetPlayer) and not HasSpawnedLobby(TargetPlayer) then
             table.insert(TargetPlayers, TargetPlayer)
         end
     end
@@ -81,7 +87,7 @@ local function MoveToDefaultPosition()
 end
 
 local function LayUnderTarget(Target)
-    if not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or HasForceField(Target) then
+    if not Target or not Target.Character or not Target.Character:FindFirstChild("HumanoidRootPart") or HasForceField(Target) or HasSpawnedLobby(Target) then
         MoveToDefaultPosition()
         return
     end
@@ -151,7 +157,6 @@ Player.CharacterAdded:Connect(function(NewCharacter)
     IsRunning = true
 end)
 
--- New biggest-server hop method
 local PlaceId, JobId = game.PlaceId, game.JobId
 local ServersUrl = "https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Desc&limit=100"
 
@@ -164,11 +169,11 @@ local function ServerHop()
     local BestServer, BestPlayers = nil, -1
     local Servers = ListServers()
     if Servers and Servers.data then
-        for _, s in ipairs(Servers.data) do
-            if s.id ~= JobId and s.playing < s.maxPlayers then
-                if s.playing > BestPlayers then
-                    BestPlayers = s.playing
-                    BestServer = s
+        for _, S in ipairs(Servers.data) do
+            if S.id ~= JobId and S.playing < S.maxPlayers then
+                if S.playing > BestPlayers then
+                    BestPlayers = S.playing
+                    BestServer = S
                 end
             end
         end
@@ -177,12 +182,18 @@ local function ServerHop()
         if Character and Character:FindFirstChild("HumanoidRootPart") then
             Character.HumanoidRootPart.Anchored = true
         end
-        TeleportService:TeleportToPlaceInstance(PlaceId, BestServer.id, Player)
+        local Success, Err = pcall(function()
+            TeleportService:TeleportToPlaceInstance(PlaceId, BestServer.id, Player)
+        end)
+        if not Success then
+            task.wait(1)
+            ServerHop()
+        end
     end
 end
 
 local function CheckServerHop()
-    local VoteVisible = VotePanel.Visible
+    local VoteVisible = VotePanel and VotePanel.Visible
     local LowPlayers = #Players:GetPlayers() < 5
     if VoteVisible or LowPlayers then
         ServerHop()
@@ -193,8 +204,9 @@ VotePanel:GetPropertyChangedSignal("Visible"):Connect(CheckServerHop)
 RunService.Heartbeat:Connect(CheckServerHop)
 
 local function StartAutoFarm()
+    if HeartbeatConnection then HeartbeatConnection:Disconnect() end
     IsRunning = true
-    RunService.Heartbeat:Connect(function(DeltaTime)
+    HeartbeatConnection = RunService.Heartbeat:Connect(function(DeltaTime)
         if IsRunning then
             MainLoop(DeltaTime)
         end
