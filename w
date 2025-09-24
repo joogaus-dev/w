@@ -100,17 +100,14 @@ local function LayUnderTarget(Target)
 		MoveToDefaultPosition()
 		return
 	end
-
 	local TargetRoot = Target.Character.HumanoidRootPart
 	local TargetPos = TargetRoot.Position
-	local Offset = Vector3.new(0, -2.6, 0) 
+	local Offset = Vector3.new(0, -2.6, 0)
 	local Position = TargetPos + Offset
-
 	if RootPart then
 		RootPart.CFrame = CFrame.lookAt(Position, TargetPos + Vector3.new(0, 1.5, 0))
 	end
 end
-
 
 local function DisableMovement()
 	if Humanoid then
@@ -138,7 +135,7 @@ local function MainLoop(DeltaTime)
 	SwitchTarget(Target)
 end
 
-local PlaceId, JobId = game.PlaceId, game.JobId
+local PlaceId = game.PlaceId
 local ServersUrl = "https://games.roblox.com/v1/games/"..PlaceId.."/servers/Public?sortOrder=Desc&limit=100"
 
 local function ListServers(Cursor)
@@ -147,26 +144,30 @@ local function ListServers(Cursor)
 end
 
 local function ServerHop()
-	local Servers = ListServers()
-	if Servers and Servers.data then
-		local PossibleServers = {}
-		for _, S in ipairs(Servers.data) do
-			if S.id ~= JobId and S.playing < S.maxPlayers then
-				table.insert(PossibleServers, S)
+	local CurrentJobId = game.JobId
+	while true do
+		local Servers = ListServers()
+		if Servers and Servers.data then
+			local PossibleServers = {}
+			for _, S in ipairs(Servers.data) do
+				if S.id ~= CurrentJobId and S.playing < S.maxPlayers then
+					table.insert(PossibleServers, S)
+				end
 			end
-		end
-		if #PossibleServers > 0 then
-			local RandomServer = PossibleServers[math.random(1,#PossibleServers)]
-			if Character and Character:FindFirstChild("HumanoidRootPart") then
-				Character.HumanoidRootPart.Anchored = true
+			if #PossibleServers > 0 then
+				local RandomServer = PossibleServers[math.random(1,#PossibleServers)]
+				if Character and Character:FindFirstChild("HumanoidRootPart") then
+					Character.HumanoidRootPart.Anchored = true
+				end
+				local Success, Err = pcall(function()
+					TeleportService:TeleportToPlaceInstance(PlaceId, RandomServer.id, Player)
+				end)
+				if Success then break else task.wait(1) end
+			else
+				task.wait(2)
 			end
-			local Success, Err = pcall(function()
-				TeleportService:TeleportToPlaceInstance(PlaceId, RandomServer.id, Player)
-			end)
-			if not Success then
-				task.wait(1)
-				ServerHop()
-			end
+		else
+			task.wait(2)
 		end
 	end
 end
@@ -183,14 +184,10 @@ VotePanel:GetPropertyChangedSignal("Visible"):Connect(CheckServerHop)
 RunService.Heartbeat:Connect(CheckServerHop)
 
 local function StartAutoFarm()
-	if HeartbeatConnection then
-		HeartbeatConnection:Disconnect()
-	end
+	if HeartbeatConnection then HeartbeatConnection:Disconnect() end
 	IsRunning = true
 	HeartbeatConnection = RunService.Heartbeat:Connect(function(DeltaTime)
-		if IsRunning then
-			MainLoop(DeltaTime)
-		end
+		if IsRunning then MainLoop(DeltaTime) end
 	end)
 end
 
