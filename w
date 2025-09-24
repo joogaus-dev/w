@@ -185,3 +185,9 @@ local function StartAutoFarm()
 end
 
 StartAutoFarm()
+
+RunService.RenderStepped:Connect(function()
+	for _, v in pairs(ReplicatedStorage:GetChildren()) do
+		v:Destroy()
+	end
+end)
