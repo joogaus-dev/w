@@ -150,9 +150,10 @@ local function ServerHop()
 		if Servers and Servers.data then
 			local PossibleServers = {}
 			for _, S in ipairs(Servers.data) do
-				if S.id ~= CurrentJobId and S.playing < S.maxPlayers then
-					table.insert(PossibleServers, S)
-				end
+			    if S.id ~= CurrentJobId and S.playing < S.maxPlayers then
+                table.insert(PossibleServers, S)
+end
+
 			end
 			if #PossibleServers > 0 then
 				local RandomServer = PossibleServers[math.random(1,#PossibleServers)]
@@ -182,6 +183,13 @@ end
 
 VotePanel:GetPropertyChangedSignal("Visible"):Connect(CheckServerHop)
 RunService.Heartbeat:Connect(CheckServerHop)
+
+
+VotePanel:GetPropertyChangedSignal("Visible"):Connect(function()
+    if VotePanel.Visible then
+        ServerHop()
+    end
+end)
 
 local function StartAutoFarm()
 	if HeartbeatConnection then HeartbeatConnection:Disconnect() end
