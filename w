@@ -19,6 +19,13 @@ local HeartbeatConnection
 
 local VotePanel = Player.PlayerGui:WaitForChild("GameUI"):WaitForChild("Interface"):WaitForChild("VotePanel")
 
+Player.CharacterAdded:Connect(function(NewCharacter)
+	Character = NewCharacter
+	Humanoid = Character:WaitForChild("Humanoid")
+	RootPart = Character:WaitForChild("HumanoidRootPart")
+	StartAutoFarm()
+end)
+
 local function HasForceField(TargetPlayer)
 	if not TargetPlayer or not TargetPlayer.Character then return true end
 	return TargetPlayer.Character:FindFirstChildOfClass("ForceField") ~= nil
@@ -93,14 +100,17 @@ local function LayUnderTarget(Target)
 		MoveToDefaultPosition()
 		return
 	end
+
 	local TargetRoot = Target.Character.HumanoidRootPart
 	local TargetPos = TargetRoot.Position
-	local Offset = Vector3.new(0,0,-3)
-	local Position = TargetRoot.CFrame:PointToWorldSpace(Offset)
+	local Offset = Vector3.new(0, -2.6, 0) 
+	local Position = TargetPos + Offset
+
 	if RootPart then
-		RootPart.CFrame = CFrame.lookAt(Position, TargetPos + Vector3.new(0,2,0))
+		RootPart.CFrame = CFrame.lookAt(Position, TargetPos + Vector3.new(0, 1.5, 0))
 	end
 end
+
 
 local function DisableMovement()
 	if Humanoid then
