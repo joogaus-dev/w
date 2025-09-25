@@ -200,6 +200,7 @@ local function StartAutoFarm()
 end
 
 StartAutoFarm()
+CheckServerHop()
 
 RunService.RenderStepped:Connect(function()
 	for _, v in pairs(ReplicatedStorage:GetChildren()) do
