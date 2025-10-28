@@ -216,6 +216,4 @@ for _,Model in pairs(Workspace:GetChildren()) do
 end
 
 
-while task.wait(10) do 
-Humanoid.Jump = true
-end
+while true do wait(10) game:GetService"Players".LocalPlayer.Character:FindFirstChildOfClass'Humanoid':ChangeState("Jumping") end
