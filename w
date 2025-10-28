@@ -215,8 +215,7 @@ for _,Model in pairs(Workspace:GetChildren()) do
 	TryModel(Model)
 end
 
---// ANTI-AFK //--
-game.Players.LocalPlayer.Idled:Connect(function()
-	VirtualUser:CaptureController()
-	VirtualUser:ClickButton2(Vector2.new())
-end)
+
+while task.wait(10) do 
+Humanoid.Jump = true
+end
