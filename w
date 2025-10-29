@@ -2,7 +2,6 @@ local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
-local UIS = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local Player = Players.LocalPlayer
@@ -17,13 +16,7 @@ local TargetBusy = false
 local ValidModels = {}
 local WebhookURL = "https://discord.com/api/webhooks/1432330112254345270/dMT5IrE16QHHG0jGCjkrnBtamwQRd2LW4wMz6NKcO6d38Mg9yxFGKemrfKY6CGsdNy4t"
 
-local BaseRadius = 10
-local BaseSpeed = 2
-local BaseJumpInterval = 1
-local Angle = 0
-local Center = Root.Position
-local LastJumpTime = tick()
-local Orbiting = true
+--// UTILITIES //--
 
 local function ParseMoney(Text)
 	Text = Text:gsub("%$", ""):gsub("%s", ""):gsub(",", ""):gsub("/s", "")
@@ -31,34 +24,38 @@ local function ParseMoney(Text)
 	local Suffix = Text:match("[KMBkmb]")
 	if Suffix then
 		Suffix = Suffix:upper()
-		if Suffix == "K" then Num = Num * 1000 elseif Suffix == "M" then Num = Num * 1000000 elseif Suffix == "B" then Num = Num * 1000000000 end
+		if Suffix == "K" then Num = Num * 1000
+		elseif Suffix == "M" then Num = Num * 1000000
+		elseif Suffix == "B" then Num = Num * 1000000000
+		end
 	end
 	return Num
 end
 
-local function SendMessageEMBED(Url, Embed)
-	local Data = {
+local function SendMessageEMBED(url, embed)
+	local data = {
 		["embeds"] = {
 			{
-				["title"] = Embed.title,
-				["description"] = Embed.description,
-				["color"] = Embed.color or 65280,
-				["fields"] = Embed.fields or {},
-				["footer"] = Embed.footer and {["text"] = Embed.footer.text} or nil
+				["title"] = embed.title,
+				["description"] = embed.description,
+				["color"] = embed.color or 65280,
+				["fields"] = embed.fields or {},
+				["footer"] = embed.footer and {["text"] = embed.footer.text} or nil
 			}
 		}
 	}
-	local Body = HttpService:JSONEncode(Data)
+	local body = HttpService:JSONEncode(data)
 	request({
-		Url = Url,
+		Url = url,
 		Method = "POST",
 		Headers = {["Content-Type"] = "application/json"},
-		Body = Body
+		Body = body
 	})
 end
 
+--// SEND STARTUP WEBHOOK //--
 local function SendStartupEmbed()
-	local Embed = {
+	local embed = {
 		title = "✅ Script Started",
 		description = "Auto-tracker is now running.",
 		color = 65280,
@@ -68,10 +65,12 @@ local function SendStartupEmbed()
 		},
 		footer = {text = "Auto-Tracker"}
 	}
-	SendMessageEMBED(WebhookURL, Embed)
+	SendMessageEMBED(WebhookURL, embed)
 end
 
 SendStartupEmbed()
+
+--// VALIDATION + LOGIC //--
 
 local function IsValidCharacter(Model)
 	if not Model:IsA("Model") then return false,nil end
@@ -99,8 +98,8 @@ local function CheckPurchase(Model, Part)
 	if not PromptAttachment then return true end
 	local Prompt = PromptAttachment:FindFirstChildWhichIsA("ProximityPrompt")
 	if not Prompt then return true end
-	for _,C in pairs(Part:GetChildren()) do
-		if C:IsA("Sound") then return true end
+	for _,c in pairs(Part:GetChildren()) do
+		if c:IsA("Sound") then return true end
 	end
 	return false
 end
@@ -113,7 +112,7 @@ local function SendSpawnEmbed(Part)
 	local GenerationLabel = Overhead:FindFirstChild("Generation")
 	local DisplayNameLabel = Overhead:FindFirstChild("DisplayName")
 	if not GenerationLabel or not DisplayNameLabel then return end
-	local Embed = {
+	local embed = {
 		title = "💎 High-Value Spawn Detected!",
 		description = "A model with ≥50M generation has spawned.",
 		color = 16776960,
@@ -123,40 +122,33 @@ local function SendSpawnEmbed(Part)
 		},
 		footer = {text = "Auto-Tracker"}
 	}
-	SendMessageEMBED(WebhookURL, Embed)
+	SendMessageEMBED(WebhookURL, embed)
 end
-
-local function GetRandomRadius() return BaseRadius + math.random(-2, 3) + math.random() end
-local function GetRandomSpeed() return BaseSpeed + math.random(-1, 2) * 0.5 + math.random() end
-local function GetRandomJumpInterval() return BaseJumpInterval + math.random(-1, 2) * 0.2 end
-
-local Radius = GetRandomRadius()
-local Speed = GetRandomSpeed()
-local JumpInterval = GetRandomJumpInterval()
 
 local function UpdateTarget()
 	if TargetBusy then return end
-	local ClosestModel = nil
-	local ClosestPart = nil
-	local ShortestDistance = math.huge
+	local closestModel = nil
+	local closestPart = nil
+	local shortestDistance = math.huge
 	for Model,Part in pairs(ValidModels) do
 		if Model.Parent and not CheckPurchase(Model, Part) then
-			local Dist = (Root.Position - Part.Position).Magnitude
-			if Dist < ShortestDistance then
-				ShortestDistance = Dist
-				ClosestModel = Model
-				ClosestPart = Part
+			local dist = (Root.Position - Part.Position).Magnitude
+			if dist < shortestDistance then
+				shortestDistance = dist
+				closestModel = Model
+				closestPart = Part
 			end
 		end
 	end
-	if ClosestModel then
-		CurrentTarget = {Model=ClosestModel, Part=ClosestPart}
+	if closestModel then
+		CurrentTarget = {Model=closestModel, Part=closestPart}
 		TargetBusy = true
-		Orbiting = false
 	end
 end
 
-RunService.RenderStepped:Connect(function(DeltaTime)
+--// MOVEMENT LOOP //--
+
+RunService.RenderStepped:Connect(function()
 	for Model,Part in pairs(ValidModels) do
 		if not Model.Parent or CheckPurchase(Model, Part) then
 			ValidModels[Model] = nil
@@ -164,22 +156,22 @@ RunService.RenderStepped:Connect(function(DeltaTime)
 	end
 	if CurrentTarget and CurrentTarget.Model and CurrentTarget.Model.Parent then
 		local Model, Part = CurrentTarget.Model, CurrentTarget.Part
-		local Direction = (Part.Position - Root.Position)
-		local Distance = Direction.Magnitude
-		if Distance > 3 then
+		local direction = (Part.Position - Root.Position)
+		local distance = direction.Magnitude
+		if distance > 3 then
 			Humanoid:MoveTo(Part.Position)
-			local IgnoreList = {Character}
-			for _,Desc in ipairs(Model:GetDescendants()) do
-				if Desc:IsA("BasePart") then table.insert(IgnoreList, Desc) end
+			local ignoreList = {Character}
+			for _,desc in ipairs(Model:GetDescendants()) do
+				if desc:IsA("BasePart") then table.insert(ignoreList, desc) end
 			end
 			if Workspace:FindFirstChild("RenderedMovingAnimals") then
-				for _,Desc in ipairs(Workspace.RenderedMovingAnimals:GetDescendants()) do
-					if Desc:IsA("BasePart") then table.insert(IgnoreList, Desc) end
+				for _,desc in ipairs(Workspace.RenderedMovingAnimals:GetDescendants()) do
+					if desc:IsA("BasePart") then table.insert(ignoreList, desc) end
 				end
 			end
-			local RayC = Ray.new(Root.Position, Direction.Unit*Distance)
-			local Hit = Workspace:FindPartOnRayWithIgnoreList(RayC, IgnoreList)
-			if Hit and Hit.CanCollide and Humanoid.FloorMaterial ~= Enum.Material.Air then
+			local ray = Ray.new(Root.Position, direction.Unit*distance)
+			local hit = Workspace:FindPartOnRayWithIgnoreList(ray, ignoreList)
+			if hit and hit.CanCollide and Humanoid.FloorMaterial ~= Enum.Material.Air then
 				Humanoid.Jump = true
 			end
 		else
@@ -194,31 +186,16 @@ RunService.RenderStepped:Connect(function(DeltaTime)
 			end
 			CurrentTarget = nil
 			TargetBusy = false
-			Orbiting = true
-			Center = Root.Position
-			Radius = GetRandomRadius()
-			Speed = GetRandomSpeed()
-			JumpInterval = GetRandomJumpInterval()
 		end
 		Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, Part.Position), 0.15)
-	elseif Orbiting then
-		Angle = Angle + Speed * DeltaTime
-		if Angle > 2 * math.pi then
-			Angle = Angle - 2 * math.pi
-			Radius = GetRandomRadius()
-			Speed = GetRandomSpeed()
-			JumpInterval = GetRandomJumpInterval()
-		end
-		local TargetPos = Vector3.new(Center.X + Radius * math.cos(Angle), Root.Position.Y, Center.Z + Radius * math.sin(Angle))
-		local Direction = (TargetPos - Root.Position).Unit
-		Humanoid:Move(Direction, false)
-		if tick() - LastJumpTime >= JumpInterval then
-			Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-			LastJumpTime = tick()
-		end
+	else
+		TargetBusy = false
+		CurrentTarget = nil
 	end
 	UpdateTarget()
 end)
+
+--// MODEL DETECTION //--
 
 local function TryModel(Model)
 	local Valid, Part = IsValidCharacter(Model)
@@ -233,14 +210,6 @@ Workspace.ChildAdded:Connect(function(Model)
 	task.wait(0.1)
 	TryModel(Model)
 end)
-
-
-local vu = game:GetService("VirtualUser")
-while wait(1) do
-vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-   wait(1)
-   vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-end
 
 for _,Model in pairs(Workspace:GetChildren()) do
 	TryModel(Model)
