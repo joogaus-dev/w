@@ -234,6 +234,14 @@ Workspace.ChildAdded:Connect(function(Model)
 	TryModel(Model)
 end)
 
+
+local vu = game:GetService("VirtualUser")
+while wait(1) do
+vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+   wait(1)
+   vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
+end
+
 for _,Model in pairs(Workspace:GetChildren()) do
 	TryModel(Model)
 end
