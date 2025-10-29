@@ -10,7 +10,7 @@ local Humanoid = Character:WaitForChild("Humanoid")
 local Root = Character:WaitForChild("HumanoidRootPart")
 local Camera = Workspace.CurrentCamera
 
-local MinMoney = 50000000
+local MinMoney = 10
 local CurrentTarget = nil
 local TargetBusy = false
 local ValidModels = {}
